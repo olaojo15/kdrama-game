@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-Drama 명대사 — Quote Match</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f4ef;
+    --surface: #ffffff;
+    --surface2: #faf8f4;
+    --border: #e8e2d9;
+    --border2: #ede8e0;
+    --accent: #9b6c38;
+    --accent-light: #c8973e;
+    --text: #1a1a2e;
+    --muted: #888;
+    --muted2: #bbb;
+    --correct-bg: #e6f7ed;
+    --correct-border: #2e9e58;
+    --correct-text: #1a5c32;
+    --wrong-bg: #fdf0ee;
+    --wrong-border: #d97060;
+    --wrong-text: #8c2e1e;
+    --font-serif: 'Noto Serif KR', serif;
+    --font-sans: 'DM Sans', sans-serif;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .game-wrap {
+    /* Break out of WordPress theme's narrow content column */
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    margin-left: -50vw;
+    padding: 0 24px 60px;
+    box-sizing: border-box;
+  }
+  .game-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+  }
+
+  /* ─── HUD ─── */
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 0 0;
+    gap: 12px;
+  }
+  .hud-brand-title {
+    font-family: var(--font-serif);
+    font-size: 14px;
+    color: var(--accent-light);
+    letter-spacing: 3px;
+    font-weight: 600;
+  }
+  .hud-brand-sub {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-top: 2px;
+    font-family: var(--font-sans);
+  }
+  .hud-stats {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+  }
+  .hud-stat {
+    text-align: center;
+  }
+  .hud-stat-label {
+    font-size: 9px;
+    color: var(--muted2);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 2px;
+  }
+  .hud-stat-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent-light);
+    font-family: var(--font-serif);
+  }
+
+  /* ─── STREAK BAR ─── */
+  .streak-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    min-height: 22px;
+  }
+  .streak-dots {
+    display: flex;
+    gap: 6px;
+  }
+  .streak-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #d9d0c3;
+    transition: background 0.3s;
+  }
+  .streak-dot.lit { background: var(--accent-light); }
+  .streak-msg {
+    font-size: 12px;
+    color: var(--accent);
+    font-style: italic;
+    font-family: var(--font-sans);
+  }
+
+  /* ─── INSTRUCTIONS ─── */
+  .instructions {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 10px;
+    text-align: center;
+    letter-spacing: 0.2px;
+  }
+
+  /* ─── CARD GRID ─── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-top: 20px;
+  }
+  @media (max-width: 900px) {
+    .card-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 700px) {
+    .card-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  }
+  @media (max-width: 560px) {
+    .card-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  }
+
+  .drama-card {
+    aspect-ratio: 2/3;
+    min-height: 160px;
+    border-radius: 8px;
+    border: 1px solid #e0d9ce;
+    background: var(--surface);
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s, border 0.2s, box-shadow 0.2s, opacity 0.5s;
+    position: relative;
+  }
+  .drama-card:hover:not(.selected):not(.correct):not(.wrong) {
+    transform: scale(1.05);
+    border: 1.5px solid var(--accent-light);
+    box-shadow: 0 6px 20px rgba(155, 108, 56, 0.18);
+  }
+  .drama-card.selected {
+    border: 2px solid var(--accent);
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(155, 108, 56, 0.22);
+  }
+
+  /* CORRECT — green border + small corner badge */
+  .drama-card.correct {
+    border: 2px solid var(--correct-border);
+    pointer-events: none;
+    cursor: default;
+  }
+  /* WRONG — red border + small corner badge, still retryable */
+  .drama-card.wrong {
+    border: 2px solid var(--wrong-border);
+    cursor: pointer;
+  }
+  .drama-card.wrong:hover:not(.selected) {
+    transform: scale(1.03);
+    border-color: #c0392b;
+  }
+  /* Corner badge — small circle in top-right */
+  .card-result-badge {
+    display: none;
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+    animation: badgeIn 0.25s ease;
+    z-index: 2;
+  }
+  @keyframes badgeIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .drama-card.correct .card-result-badge {
+    display: flex;
+    background: var(--correct-border);
+    color: #fff;
+  }
+  .drama-card.wrong .card-result-badge {
+    display: flex;
+    background: var(--wrong-border);
+    color: #fff;
+  }
+  /* Hide badge while card is actively selected for re-attempt */
+  .drama-card.selected .card-result-badge { display: none; }
+
+  /* Cleared — fades out at round start */
+  .drama-card.cleared {
+    opacity: 0 !important;
+    transform: scale(0.85) !important;
+    transition: all 0.4s ease !important;
+    pointer-events: none !important;
+  }
+  .card-poster {
+    flex: 0 0 72%;
+    overflow: hidden;
+    background: var(--surface2);
+    position: relative;
+  }
+  .card-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .card-poster-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    text-align: center;
+    font-family: var(--font-serif);
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(0,0,0,0.5);
+    line-height: 1.4;
+  }
+  .card-info {
+    flex: 0 0 28%;
+    background: var(--surface2);
+    padding: 7px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-top: 1px solid var(--border);
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+  .card-year {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* ─── CHALLENGE PANEL ─── */
+  .challenge-panel {
+    margin-top: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: none;
+  }
+  .challenge-panel.open { display: block; }
+
+  /* Cinematic reveal */
+  .cinematic-reveal {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.6s ease;
+    background: #faf3e8;
+    border-bottom: 1px solid var(--border2);
+  }
+  .cinematic-reveal.open { max-height: 160px; }
+  .cinematic-inner {
+    padding: 20px 28px;
+    text-align: center;
+  }
+  .cinematic-quote {
+    font-family: var(--font-serif);
+    font-size: 14px;
+    font-style: italic;
+    color: #4a3520;
+    line-height: 1.9;
+  }
+  .cinematic-meta {
+    font-size: 11px;
+    color: var(--accent-light);
+    letter-spacing: 2px;
+    margin-top: 10px;
+    font-family: var(--font-serif);
+  }
+
+  /* Challenge header */
+  .challenge-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid var(--border2);
+  }
+  .challenge-thumb {
+    width: 52px;
+    height: 78px;
+    border-radius: 5px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .challenge-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .challenge-thumb-placeholder {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-serif); font-size: 9px; color: var(--muted);
+    text-align: center; padding: 4px;
+  }
+  .challenge-title {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    color: var(--accent-light);
+    font-weight: 600;
+    line-height: 1.3;
+  }
+  .challenge-subtitle {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* Quote options */
+  .quotes-area {
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .quote-btn {
+    width: 100%;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    text-align: left;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.65;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .quote-btn:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: #fdf8f2;
+  }
+
+  /* Feedback bar */
+  .feedback-bar {
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 500;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+  }
+  .feedback-bar.correct { color: var(--correct-text); }
+  .feedback-bar.wrong { color: var(--wrong-text); }
+
+  /* Continue button */
+  .continue-btn {
+    display: block;
+    width: calc(100% - 48px);
+    margin: 0 24px 20px;
+    padding: 14px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background 0.2s;
+    display: none;
+  }
+  .continue-btn:hover { background: #8a5e2e; }
+  .continue-btn.visible { display: block; }
+
+  /* ─── END OF ROUND SCREEN ─── */
+  .eor-screen {
+    display: none;
+    margin-top: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 32px;
+    text-align: center;
+  }
+  .eor-screen.open { display: block; }
+  .eor-round-label {
+    font-family: var(--font-serif);
+    font-size: 22px;
+    color: var(--accent-light);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .eor-status {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+  .eor-stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  .eor-stat {
+    text-align: center;
+  }
+  .eor-stat-value {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    color: var(--accent-light);
+    font-weight: 600;
+  }
+  .eor-stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .next-round-btn, .play-again-btn {
+    display: inline-block;
+    padding: 14px 36px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    transition: background 0.2s;
+    margin-top: 4px;
+  }
+  .next-round-btn:hover, .play-again-btn:hover { background: #8a5e2e; }
+
+  /* ─── COMPLETION SCREEN ─── */
+  .completion-screen {
+    display: none;
+    margin-top: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 48px 32px;
+    text-align: center;
+  }
+  .completion-screen.open { display: block; }
+  .completion-korean {
+    font-family: var(--font-serif);
+    font-size: 42px;
+    color: var(--accent-light);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .completion-subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-bottom: 32px;
+  }
+
+
+  /* ─── LOADING OVERLAY ─── */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 16px;
+  }
+  .loading-overlay.hidden { display: none; }
+  .loading-title {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    color: var(--accent-light);
+    letter-spacing: 2px;
+  }
+  .loading-sub {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: var(--font-sans);
+  }
+  .loading-dots {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .loading-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent-light);
+    animation: pulse 1.2s infinite;
+  }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* ─── MISC ─── */
+  .divider { height: 1px; background: var(--border2); margin: 24px 0; }
+
+  @media (max-width: 600px) {
+    .hud-stats { gap: 14px; }
+    .hud-stat-value { font-size: 13px; }
+    .challenge-title { font-size: 15px; }
+    .quotes-area { padding: 12px 16px; }
+    .quote-btn { font-size: 13px; padding: 12px 14px; }
+    .eor-screen, .completion-screen { padding: 28px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-title">K-Drama 명대사</div>
+  <div class="loading-sub">Loading posters...</div>
+  <div class="loading-dots">
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+    <div class="loading-dot"></div>
+  </div>
+</div>
+
+<div class="game-wrap">
+<div class="game-inner">
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-brand">
+      <div class="hud-brand-title">K-Drama 명대사</div>
+      <div class="hud-brand-sub">Quote Match</div>
+    </div>
+    <div class="hud-stats">
+      <div class="hud-stat">
+        <div class="hud-stat-label">Score</div>
+        <div class="hud-stat-value" id="hud-score">0</div>
+      </div>
+      <div class="hud-stat">
+        <div class="hud-stat-label">Round</div>
+        <div class="hud-stat-value" id="hud-round">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Streak bar -->
+  <div class="streak-bar">
+    <div class="streak-dots">
+      <div class="streak-dot" id="dot-0"></div>
+      <div class="streak-dot" id="dot-1"></div>
+      <div class="streak-dot" id="dot-2"></div>
+    </div>
+    <div class="streak-msg" id="streak-msg"></div>
+  </div>
+
+  <!-- Instructions -->
+  <div class="instructions">Select a drama card, then match it to the correct quote.</div>
+
+  <!-- Card grid -->
+  <div class="card-grid" id="card-grid"></div>
+
+  <!-- Challenge panel -->
+  <div class="challenge-panel" id="challenge-panel">
+    <div class="cinematic-reveal" id="cinematic-reveal">
+      <div class="cinematic-inner">
+        <div class="cinematic-quote" id="cinematic-quote"></div>
+        <div class="cinematic-meta" id="cinematic-meta"></div>
+      </div>
+    </div>
+    <div class="challenge-header">
+      <div class="challenge-thumb" id="challenge-thumb"></div>
+      <div>
+        <div class="challenge-title" id="challenge-title"></div>
+        <div class="challenge-subtitle">Which quote belongs to this drama?</div>
+      </div>
+    </div>
+    <div class="quotes-area" id="quotes-area"></div>
+    <div class="feedback-bar" id="feedback-bar"></div>
+    <button class="continue-btn" id="continue-btn">Continue →</button>
+  </div>
+
+  <!-- End of round screen -->
+  <div class="eor-screen" id="eor-screen">
+    <div class="eor-round-label" id="eor-round-label"></div>
+    <div class="eor-status" id="eor-status"></div>
+    <div class="eor-stats-row">
+      <div class="eor-stat">
+        <div class="eor-stat-value" id="eor-matched"></div>
+        <div class="eor-stat-label">Cards Matched</div>
+      </div>
+      <div class="eor-stat">
+        <div class="eor-stat-value" id="eor-round-pts"></div>
+        <div class="eor-stat-label">Points This Round</div>
+      </div>
+      <div class="eor-stat">
+        <div class="eor-stat-value" id="eor-total-score"></div>
+        <div class="eor-stat-label">Total Score</div>
+      </div>
+    </div>
+    <button class="next-round-btn" id="next-round-btn">Next Round →</button>
+  </div>
+
+  <!-- Full completion screen -->
+  <div class="completion-screen" id="completion-screen">
+    <div class="completion-korean">축하해요</div>
+    <div class="completion-subtitle">You've completed all K-Dramas!</div>
+    <div class="eor-stats-row" style="margin-bottom:20px">
+      <div class="eor-stat">
+        <div class="eor-stat-value" id="comp-score"></div>
+        <div class="eor-stat-label">Final Score</div>
+      </div>
+      <div class="eor-stat">
+        <div class="eor-stat-value" id="comp-dramas"></div>
+        <div class="eor-stat-label">Dramas Matched</div>
+      </div>
+    </div>
+    <button class="play-again-btn" id="play-again-btn" style="margin-top:24px">Play Again</button>
+  </div>
+
+
+</div><!-- end game-inner -->
+</div><!-- end game-wrap -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  RAW QUOTE DATA — embedded from kdrama_quotes.md
+// ═══════════════════════════════════════════════════════════
+const RAW_QUOTES = `
+"Some people in this world are never quite good at what they love, yet are foolish enough not to know when to let go." — Melo Movie (Kdrama)
+
+"Yesterday is over
+Tomorrow's yet to come
+Today is yet unknown." — Our Unwritten Seoul (Kdrama)
+
+"The reason why beautiful memories are precious is that those moments can never return." — Yonder (Kdrama)
+
+"It's the fighters in the ring that have it hard, not the spectators." — Encounter (Kdrama)
+
+"Just like that, one by one, my life is gaining wrinkles. Sometimes, they become sighs. Sometimes, they become tears. Sometimes, they become a path." — Now, We Are Breaking Up (Kdrama)
+
+"I guess you like snow. Don't you like it? It's pretty to watch and useless otherwise. Doesn't it make you feel happy since it's so pretty? I guess you like pretty things. Doesn't everyone?" — The Interest of Love (Kdrama)
+
+"There's a warm moment at the end of every film where it reads the names of everyone involved. Until that final moment arrives, movies like life race tirelessly towards the ending, and sometimes just when we think the ending is here, that's when life begins." — Our Movie (Kdrama)
+
+"You can dodge a flying dagger, but you can't dodge a hidden one." — Vincenzo (Kdrama)
+
+"When two coincidences overlap, is that still a coincidence?" — Reborn Rich (Kdrama)
+
+"Your taste is what sets you apart." — My Demon (Kdrama)
+
+"Ancient relics are only meaningful when we discover them in the present." — My Youth (Kdrama)
+
+"Humans are funny. We want to punish some people over the smallest things, and we want to forgive others over the most trivial matters." — Delightfully Deceitful (Kdrama)
+
+"We are not curious about the things we are used to. You only know how precious they were once they are gone." — The Golden Spoon (Kdrama)
+
+"They say: The more you know, the more you see, but for me, I think the more you know, the more you get to like it." — My Roommate Is a Gumiho (Kdrama)
+
+"In soccer, there is injury time. The referee gives them a few extra minutes even after the game is over. It makes the winning team feel anxious, but to the losing team, it's their last light of hope." — Born Again (Kdrama)
+
+"Do you even know what taste is? It's about finding that one thing that truly speaks to you among many. And do you know how you find that one thing? By trying new things. You keep trying over and over to find what's perfect for you. But people like me with no money can't do that. You know why? Because we can't afford to fail. Opportunities to try new things aren't just lying around for us." — To the Moon (Kdrama)
+
+"One glass for you who left,
+One glass for my pathetic self
+And another glass for our eternal love
+And the last glass is for God who preordained everything." — When the Weather Is Fine (Kdrama)
+
+"Dang-gu, the most tragic experience is to live your entire life regretting what you could have done. Please don't live that way." — Alchemy of Souls (Kdrama)
+
+"The patient's story doesn't always give us the answer. They only open up the path that leads to the answer." — Doctor John (Kdrama)
+
+"People with low self-esteem tend to have big egos." — Dr Romantic Season 2 (Kdrama)
+
+"Rain has a way of showing up when you don't have an umbrella." — Love Me (Kdrama)
+
+"Sometimes the thing you're searching for is right under your nose." — Would You Marry Me (Kdrama)
+
+"Oh, dear. You pitiful man. Do you believe in fate? Even though the opportunities are given, there are always those who live the lives they're meant to." — Tomorrow With You (Kdrama)
+
+"The moon is always up during the day. We just don't see it. Just because they're invisible doesn't mean they don't exist." — Moon in the Day (Kdrama)
+
+"Your reputation becomes rumours and rumours become your reputation!" — The Glory (Kdrama)
+
+"It's not lies that blind us. It's trust." — The Art of Sarah (Kdrama)
+
+"The thing about memories is that sometimes they're really rebellious. The more you try to forget, the more vivid they become. And when you want to remember, they run away from you." — In Your Radiant Season (Kdrama)
+
+"When it's confusing, rule out the uncertain things first. Then clarity will emerge." — The Price of Confession (Kdrama)
+
+"There's no need to cry. You'll get used to it soon enough, just like everyone else here. That's the thing about humans. We are quick to adapt to anything. Whether it be longing or anguish." — Gyeongseong Creature (Kdrama)
+
+"Everyone is given the same amount of time. But I realised that the depth of the time he and I had spent is completely different." — Itaewon Class (Kdrama)
+
+"Where we'll be, what we'll be doing, and with whom." — Still Shining (Kdrama)
+
+"A giant tree fell in a forest, and no one was around to hear it. Did it make a sound, or was there nothing but silence?" — The Frog (Kdrama)
+
+"You always run into unexpected variables when you do these jobs." — Karma (Kdrama)
+
+"If you don't react the way they expect, you won't be under their control." — The Killer Paradox (Kdrama)
+
+"What qualifies as a good poem? The ones experts recommend are all hard to understand. A poem makes sense once you memorise it. You won't get it just by reading it." — We Are All Trying Here (Kdrama)
+
+"Do you know what someone with no money has in common with someone with too much money? Living is no fun for them. If you have too much money, no matter what you buy, eat, or drink, everything gets boring in the end." — Squid Game (Kdrama)
+`.trim();
+
+// ═══════════════════════════════════════════════════════════
+//  PARSE QUOTES → BUILD CATALOGUE
+// ═══════════════════════════════════════════════════════════
+function parseQuotes(raw) {
+  const catalogue = {}; // { dramaTitle: [quote, ...] }
+  // Split on blank lines to handle multi-line quotes as single entries
+  const blocks = raw.split(/\n\s*\n/).map(b => b.trim()).filter(b => b.length > 0);
+
+  for (const block of blocks) {
+    // Each block: everything before ` — DramaTitle (Kdrama)` is the quote
+    // The separator is em dash followed by drama name followed by (Kdrama)
+    // Use greedy match on quote body, then anchor to — Drama (Kdrama) at end
+    const match = block.match(/^"([\s\S]+)"\s*—\s*(.+?)\s*\(Kdrama\)\s*$/m);
+    if (!match) continue;
+    const quote = match[1].trim();
+    const drama = match[2].trim();
+    if (!catalogue[drama]) catalogue[drama] = [];
+    catalogue[drama].push(quote);
+  }
+  return catalogue;
+}
+
+const CATALOGUE = parseQuotes(RAW_QUOTES);
+const UNIQUE_DRAMAS = Object.keys(CATALOGUE).length;
+const ALL_QUOTES = Object.values(CATALOGUE).flat();
+const TOTAL_QUOTES = ALL_QUOTES.length;
+const CARDS_PER_ROUND = 5;
+const TOTAL_ROUNDS = Math.ceil(UNIQUE_DRAMAS / CARDS_PER_ROUND);
+
+// ═══════════════════════════════════════════════════════════
+//  TMDB
+// ═══════════════════════════════════════════════════════════
+const TMDB_KEY = '95231a3ad40e2698d29f488a292041cd';
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMG = 'https://image.tmdb.org/t/p/w342';
+const posterCache = {}; // { dramaTitle: { posterUrl, year } }
+
+// Overrides for titles that don't resolve cleanly via text search.
+// Each entry uses a confirmed TMDB numeric ID to fetch the exact correct Korean show.
+const TMDB_OVERRIDES = {
+  'Dr Romantic Season 2':    { id: 68398  },  // Listed as "Dr. Romantic" on TMDB (with dot)
+  'To the Moon':             { id: 275177 },  // Text search returns non-Korean results first
+  'The Killer Paradox':      { id: 202783 },  // TMDB title is "A Killer Paradox" (ID confirmed)
+  'My Youth':                { id: 262237 },  // Multiple "My Youth" entries; this is the Korean 2025 one
+  'Encounter':               { id: 83941  },  // Two Encounter shows on TMDB; this is the Korean 2018 one
+  'Would You Marry Me':      { id: 281011 },  // Two entries; this is the Korean 2025 one
+  'Our Movie':               { id: 258256 },  // Generic title could collide
+  'Love Me':                 { id: 275989 },  // Generic title; multiple entries
+  'Our Unwritten Seoul':     { id: 261980 },  // Confirmed Korean ID
+  'The Art of Sarah':        { id: 273977 },  // Confirmed Korean ID
+  'Melo Movie':              { id: 243964 },  // Confirmed Korean ID
+  'Yonder':                  { id: 132600 },  // Confirmed Korean ID
+  'Born Again':              { id: 100857 },  // Confirmed Korean ID
+  'Moon in the Day':         { id: 230924 },  // Confirmed Korean ID
+  'Tomorrow With You':       { id: 68250  },  // Confirmed Korean ID
+  'The Price of Confession': { id: 209110 },  // Confirmed Korean ID
+  'We Are All Trying Here':  { id: 289424 },  // Confirmed Korean ID
+  'In Your Radiant Season':  { id: 233833 },  // Confirmed Korean ID
+  'Still Shining':           { id: 276472 },  // Confirmed Korean ID
+  'Karma':                   { id: 233686 },  // Confirmed Korean ID
+  'The Frog':                { id: 219652 },  // Confirmed Korean ID
+};
+
+async function fetchTMDB(drama) {
+  if (posterCache[drama]) return posterCache[drama];
+  try {
+    const override = TMDB_OVERRIDES[drama];
+    let r = null;
+
+    if (override && override.id) {
+      // Direct ID lookup — bypasses search entirely
+      const res = await fetch(`${TMDB_BASE}/tv/${override.id}?api_key=${TMDB_KEY}&language=en-US`);
+      const data = await res.json();
+      if (data.poster_path) {
+        r = { poster_path: data.poster_path, first_air_date: data.first_air_date };
+      }
+    } else {
+      // Normal title search
+      const searchTerm = (override && override.search) ? override.search : drama;
+      const query = encodeURIComponent(searchTerm);
+      const res = await fetch(`${TMDB_BASE}/search/tv?api_key=${TMDB_KEY}&query=${query}&language=en-US&page=1`);
+      const data = await res.json();
+      if (data.results && data.results.length > 0) r = data.results[0];
+    }
+
+    if (r) {
+      posterCache[drama] = {
+        posterUrl: r.poster_path ? `${TMDB_IMG}${r.poster_path}` : null,
+        year: r.first_air_date ? r.first_air_date.substring(0, 4) : ''
+      };
+    } else {
+      posterCache[drama] = { posterUrl: null, year: '' };
+    }
+  } catch(e) {
+    posterCache[drama] = { posterUrl: null, year: '' };
+  }
+  return posterCache[drama];
+}
+
+async function prefetchAllPosters() {
+  const dramas = Object.keys(CATALOGUE);
+  // Batch in groups of 5 to avoid rate limiting
+  for (let i = 0; i < dramas.length; i += 5) {
+    const batch = dramas.slice(i, i + 5);
+    await Promise.all(batch.map(d => fetchTMDB(d)));
+  }
+}
+
+// Deterministic pastel from title string
+function titleToColour(title) {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h}, 40%, 88%)`;
+}
+
+function renderPosterHTML(drama, small = false) {
+  const data = posterCache[drama];
+  if (data && data.posterUrl) {
+    return `<img src="${data.posterUrl}" alt="${drama}" loading="lazy">`;
+  }
+  const bg = titleToColour(drama);
+  return `<div class="card-poster-placeholder" style="background:${bg}">${drama}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════
+let masterQueue = [];       // shuffled drama names for the session
+let currentRound = 0;
+let roundDramas = [];       // 5 (or fewer) dramas this round
+let selectedDrama = null;   // currently selected card
+let clearedDramas = new Set();   // correctly matched
+let wrongDramas = new Set();     // answered wrong — still retryable
+let attemptedDramas = new Set(); // all dramas answered at least once (right or wrong)
+let panelOpen = false;           // true when challenge panel is awaiting Continue click
+let lastAnswerCorrect = false;   // tracks outcome of most recent answer
+let totalScore = 0;
+let roundScore = 0;
+let roundMatched = 0;
+let totalMatched = 0;
+let streak = 0;
+let answeredCurrentCard = false;
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SESSION INIT
+// ═══════════════════════════════════════════════════════════
+function initSession() {
+  masterQueue = shuffle(Object.keys(CATALOGUE));
+  currentRound = 0;
+  totalScore = 0;
+  totalMatched = 0;
+  document.getElementById('hud-score').textContent = '0';
+  startNextRound();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ROUND START
+// ═══════════════════════════════════════════════════════════
+function startNextRound() {
+  // Hide screens
+  document.getElementById('eor-screen').classList.remove('open');
+  document.getElementById('completion-screen').classList.remove('open');
+  document.getElementById('challenge-panel').classList.remove('open');
+
+  // Fade out any remaining cards from the previous round
+  document.querySelectorAll('.drama-card').forEach(c => c.classList.add('cleared'));
+
+  currentRound++;
+  roundScore = 0;
+  roundMatched = 0;
+  selectedDrama = null;
+  clearedDramas = new Set();
+  wrongDramas = new Set();
+  attemptedDramas = new Set();
+  panelOpen = false;
+  lastAnswerCorrect = false;
+  streak = 0;
+  answeredCurrentCard = false;
+
+  updateStreakUI();
+
+  // Slice next batch from master queue
+  const startIdx = (currentRound - 1) * CARDS_PER_ROUND;
+  roundDramas = masterQueue.slice(startIdx, startIdx + CARDS_PER_ROUND);
+
+  // HUD round display
+  document.getElementById('hud-round').textContent = `${currentRound}/${TOTAL_ROUNDS}`;
+
+  renderCardGrid();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CARD GRID
+// ═══════════════════════════════════════════════════════════
+function renderCardGrid() {
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = '';
+  roundDramas.forEach(drama => {
+    const data = posterCache[drama] || { posterUrl: null, year: '' };
+    const card = document.createElement('div');
+    card.className = 'drama-card';
+    card.dataset.drama = drama;
+    card.onclick = () => selectCard(drama);
+
+    const posterDiv = document.createElement('div');
+    posterDiv.className = 'card-poster';
+    if (data.posterUrl) {
+      const img = document.createElement('img');
+      img.src = data.posterUrl;
+      img.alt = drama;
+      img.loading = 'lazy';
+      posterDiv.appendChild(img);
+    } else {
+      const ph = document.createElement('div');
+      ph.className = 'card-poster-placeholder';
+      ph.style.background = titleToColour(drama);
+      ph.textContent = drama;
+      posterDiv.appendChild(ph);
+    }
+
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'card-info';
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'card-title';
+    titleDiv.textContent = drama;
+    const yearDiv = document.createElement('div');
+    yearDiv.className = 'card-year';
+    yearDiv.textContent = data.year || '';
+    infoDiv.appendChild(titleDiv);
+    infoDiv.appendChild(yearDiv);
+
+    // Small corner badge — shown after answering (✓ green or ✕ red)
+    const badge = document.createElement('div');
+    badge.className = 'card-result-badge';
+
+    card.appendChild(posterDiv);
+    card.appendChild(infoDiv);
+    card.appendChild(badge);
+    grid.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CARD SELECTION
+// ═══════════════════════════════════════════════════════════
+function selectCard(drama) {
+  // Block card selection if the panel is waiting for a Continue click
+  if (panelOpen) return;
+
+  // Block correctly cleared cards from being re-selected
+  if (clearedDramas.has(drama)) return;
+
+  selectedDrama = drama;
+  document.querySelectorAll('.drama-card').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(drama)}"]`);
+  if (card) {
+    card.classList.remove('wrong');
+    card.classList.add('selected');
+  }
+
+  answeredCurrentCard = false;
+  openChallengePanel(drama);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CHALLENGE PANEL
+// ═══════════════════════════════════════════════════════════
+function openChallengePanel(drama) {
+  panelOpen = true;
+  const panel = document.getElementById('challenge-panel');
+  panel.classList.add('open');
+
+  // Collapse cinematic reveal
+  document.getElementById('cinematic-reveal').classList.remove('open');
+  document.getElementById('feedback-bar').textContent = '';
+  document.getElementById('feedback-bar').className = 'feedback-bar';
+  document.getElementById('continue-btn').classList.remove('visible');
+
+  // Header
+  document.getElementById('challenge-title').textContent = drama;
+
+  // Thumb
+  const thumbEl = document.getElementById('challenge-thumb');
+  const data = posterCache[drama] || {};
+  if (data.posterUrl) {
+    thumbEl.innerHTML = `<img src="${data.posterUrl}" alt="${drama}">`;
+  } else {
+    thumbEl.innerHTML = `<div class="challenge-thumb-placeholder" style="background:${titleToColour(drama)}">${drama}</div>`;
+  }
+
+  // Build quote options
+  const dramaquotes = CATALOGUE[drama];
+  const correctQuote = dramaquotes[Math.floor(Math.random() * dramaquotes.length)];
+
+  // Decoys: from all quotes, excluding this drama's quotes
+  const decoyPool = ALL_QUOTES.filter(q => !dramaquotes.includes(q));
+  const shuffledDecoys = shuffle(decoyPool);
+  const decoys = shuffledDecoys.slice(0, Math.min(3, shuffledDecoys.length));
+
+  const options = shuffle([correctQuote, ...decoys]);
+
+  const area = document.getElementById('quotes-area');
+  area.innerHTML = '';
+  options.forEach(quote => {
+    const btn = document.createElement('button');
+    btn.className = 'quote-btn';
+    btn.textContent = quote;
+    btn.dataset.q = quote;
+    btn.onclick = () => submitAnswer(quote, correctQuote, drama);
+    area.appendChild(btn);
+  });
+
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ANSWER SUBMISSION
+// ═══════════════════════════════════════════════════════════
+function submitAnswer(chosen, correct, drama) {
+  if (answeredCurrentCard) return;
+  answeredCurrentCard = true;
+
+  const isCorrect = (chosen === correct);
+  lastAnswerCorrect = isCorrect;
+  const allBtns = document.querySelectorAll('#quotes-area .quote-btn');
+
+  allBtns.forEach(btn => {
+    const q = btn.dataset.q;
+    btn.disabled = true;
+    if (q === correct) {
+      btn.style.cssText = 'background:#e6f7ed !important; border:2.5px solid #2e9e58 !important; color:#1a5c32 !important; font-weight:500 !important';
+    } else if (q === chosen && !isCorrect) {
+      btn.style.cssText = 'background:#fdf0ee !important; border:2px solid #d97060 !important; color:#8c2e1e !important';
+    } else {
+      btn.style.opacity = '0.45';
+      btn.style.cursor = 'default';
+    }
+  });
+
+  const fb = document.getElementById('feedback-bar');
+
+  if (isCorrect) {
+    const pts = 100;
+    totalScore += pts;
+    roundScore += pts;
+    roundMatched++;
+    totalMatched++;
+    streak++;
+
+    fb.textContent = `✓ Correct! +${pts} pts`;
+    fb.className = 'feedback-bar correct';
+
+    // Cinematic reveal
+    const data = posterCache[drama] || {};
+    document.getElementById('cinematic-quote').textContent = `"${correct}"`;
+    document.getElementById('cinematic-meta').textContent = `— ${drama}${data.year ? ', ' + data.year : ''}`;
+    document.getElementById('cinematic-reveal').classList.add('open');
+
+    // Update HUD score
+    document.getElementById('hud-score').textContent = totalScore;
+
+    // Apply ✓ badge to card immediately
+    const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(drama)}"]`);
+    if (card) {
+      const badge = card.querySelector('.card-result-badge');
+      if (badge) badge.textContent = '✓';
+      card.classList.remove('selected', 'wrong');
+      card.classList.add('correct');
+    }
+    clearedDramas.add(drama);
+    wrongDramas.delete(drama);
+  } else {
+    streak = 0;
+    fb.textContent = `✗ Not quite — the correct answer is highlighted above.`;
+    fb.className = 'feedback-bar wrong';
+  }
+
+  // Mark this drama as attempted (first time only)
+  attemptedDramas.add(drama);
+
+  updateStreakUI();
+
+  // Always show Continue — it's the gate to the next card (and round-end check)
+  document.getElementById('continue-btn').classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONTINUE AFTER ANSWER
+// ═══════════════════════════════════════════════════════════
+function continueAfterAnswer() {
+  if (!selectedDrama) return;
+
+  const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(selectedDrama)}"]`);
+
+  if (lastAnswerCorrect) {
+    // ✓ badge already on card from submitAnswer — ensure correct class is set
+    if (card) {
+      card.classList.remove('selected', 'wrong');
+      card.classList.add('correct');
+    }
+  } else {
+    // Wrong — show ✕ badge, card stays retryable
+    wrongDramas.add(selectedDrama);
+    if (card) {
+      const badge = card.querySelector('.card-result-badge');
+      if (badge) badge.textContent = '✕';
+      card.classList.remove('selected');
+      card.classList.add('wrong');
+    }
+  }
+
+  panelOpen = false;
+  document.getElementById('challenge-panel').classList.remove('open');
+  document.getElementById('continue-btn').classList.remove('visible');
+  selectedDrama = null;
+  answeredCurrentCard = false;
+
+  // ── Round-end check ──────────────────────────────────────
+  // End the round if every drama in the round has been attempted at least once
+  // (all cards have a right or wrong badge — same trigger as timer expiry)
+  if (attemptedDramas.size >= roundDramas.length) {
+    setTimeout(() => endRound(), 400);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  TIMER
+// ═══════════════════════════════════════════════════════════
+function stopTimer() { /* no-op — timer removed */ }
+
+function scrollToGame() {
+  const wrap = document.querySelector('.game-inner');
+  if (!wrap) return;
+  const top = wrap.getBoundingClientRect().top + window.pageYOffset - 20;
+  window.scrollTo({ top, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STREAK UI
+// ═══════════════════════════════════════════════════════════
+function updateStreakUI() {
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById(`dot-${i}`);
+    dot.classList.toggle('lit', i < streak);
+  }
+  const msg = document.getElementById('streak-msg');
+  if (streak >= 3) msg.textContent = 'On a roll!';
+  else if (streak === 2) msg.textContent = 'Keep going...';
+  else msg.textContent = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  END OF ROUND
+// ═══════════════════════════════════════════════════════════
+function endRound() {
+  panelOpen = false;
+  document.getElementById('challenge-panel').classList.remove('open');
+  document.getElementById('continue-btn').classList.remove('visible');
+
+  const isLastRound = currentRound >= TOTAL_ROUNDS;
+
+  // Always show the EOR screen — on the final round it leads to the completion screen
+  const eor = document.getElementById('eor-screen');
+  eor.classList.add('open');
+
+  document.getElementById('eor-round-label').textContent = `Round ${currentRound} Complete`;
+
+  const allCorrect = clearedDramas.size >= roundDramas.length;
+  document.getElementById('eor-status').textContent = allCorrect
+    ? 'All cards matched this round!'
+    : 'All cards played this round.';
+
+  document.getElementById('eor-matched').textContent = `${roundMatched} / ${roundDramas.length}`;
+  document.getElementById('eor-round-pts').textContent = roundScore;
+  document.getElementById('eor-total-score').textContent = totalScore;
+
+  // On the final round: swap "Next Round" for a "See Final Results" button
+  const nextBtn = document.getElementById('next-round-btn');
+  if (isLastRound) {
+    nextBtn.textContent = 'See Final Results →';
+    nextBtn.onclick = showCompletionScreen;
+  } else {
+    nextBtn.textContent = 'Next Round →';
+    nextBtn.onclick = startNextRound;
+  }
+
+  scrollToGame();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  COMPLETION SCREEN
+// ═══════════════════════════════════════════════════════════
+function showCompletionScreen() {
+  const cs = document.getElementById('completion-screen');
+  cs.classList.add('open');
+  document.getElementById('comp-score').textContent = totalScore;
+  document.getElementById('comp-dramas').textContent = `${totalMatched} / ${UNIQUE_DRAMAS}`;
+  scrollToGame();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  PLAY AGAIN
+// ═══════════════════════════════════════════════════════════
+function playAgain() {
+  document.getElementById('completion-screen').classList.remove('open');
+  document.getElementById('eor-screen').classList.remove('open');
+  initSession();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+async function boot() {
+  // Wire button handlers via JS — avoids WordPress stripping inline onclick attributes
+  document.getElementById('continue-btn').addEventListener('click', continueAfterAnswer);
+  document.getElementById('play-again-btn').addEventListener('click', playAgain);
+
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  document.querySelector('.loading-overlay .loading-sub').textContent = `Fetching posters for ${UNIQUE_DRAMAS} dramas...`;
+
+  await prefetchAllPosters();
+
+  document.getElementById('loading-overlay').classList.add('hidden');
+  initSession();
+}
+
+boot();
+</script>
+</body>
+</html>
