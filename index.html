@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -125,13 +126,72 @@
   }
 
   /* ─── INSTRUCTIONS ─── */
-  .instructions {
-    font-size: 13px;
-    color: var(--muted);
-    margin-top: 10px;
-    text-align: center;
-    letter-spacing: 0.2px;
+  /* ─── HOW TO PLAY ─── */
+  .how-to-play {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-top: 16px;
   }
+  .how-to-play-title {
+    font-family: var(--font-serif);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .how-to-play-steps {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .htp-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex: 1;
+    min-width: 160px;
+  }
+  .htp-num {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .htp-text {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .htp-text strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+  @media (max-width: 600px) {
+    .how-to-play-steps { flex-direction: column; gap: 8px; }
+    .htp-step { min-width: unset; }
+  }
+
+  /* ─── SHAKE ANIMATION (blocked card feedback) ─── */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-5px); }
+    40%       { transform: translateX(5px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+  .drama-card.shake { animation: shake 0.35s ease; }
 
   /* ─── CARD GRID ─── */
   .card-grid {
@@ -183,11 +243,8 @@
   /* WRONG — red border + small corner badge, still retryable */
   .drama-card.wrong {
     border: 2px solid var(--wrong-border);
-    cursor: pointer;
-  }
-  .drama-card.wrong:hover:not(.selected) {
-    transform: scale(1.03);
-    border-color: #c0392b;
+    cursor: default;
+    pointer-events: none;
   }
   /* Corner badge — small circle in top-right */
   .card-result-badge {
@@ -603,8 +660,28 @@
     <div class="streak-msg" id="streak-msg"></div>
   </div>
 
-  <!-- Instructions -->
-  <div class="instructions">Select a drama card, then match it to the correct quote.</div>
+  <!-- How to play -->
+  <div class="how-to-play">
+    <div class="how-to-play-title">How to Play</div>
+    <div class="how-to-play-steps">
+      <div class="htp-step">
+        <div class="htp-num">1</div>
+        <div class="htp-text"><strong>Pick a card</strong> — choose any K-Drama poster from the grid</div>
+      </div>
+      <div class="htp-step">
+        <div class="htp-num">2</div>
+        <div class="htp-text"><strong>Match the quote</strong> — select which of the four quotes belongs to that drama</div>
+      </div>
+      <div class="htp-step">
+        <div class="htp-num">3</div>
+        <div class="htp-text"><strong>Click Continue</strong> — then pick your next card. Each card is played once only</div>
+      </div>
+      <div class="htp-step">
+        <div class="htp-num">4</div>
+        <div class="htp-text"><strong>Complete the round</strong> — once all cards are played, your score is tallied</div>
+      </div>
+    </div>
+  </div>
 
   <!-- Card grid -->
   <div class="card-grid" id="card-grid"></div>
@@ -749,9 +826,11 @@ And the last glass is for God who preordained everything." — When the Weather 
 
 "If you don't react the way they expect, you won't be under their control." — The Killer Paradox (Kdrama)
 
-"What qualifies as a good poem? The ones experts recommend are all hard to understand. A poem makes sense once you memorise it. You won't get it just by reading it." — We Are All Trying Here (Kdrama)
+"All writing begins with the hope of being read. That disgusting hope to be seen." — We Are All Trying Here (Kdrama)
 
 "Do you know what someone with no money has in common with someone with too much money? Living is no fun for them. If you have too much money, no matter what you buy, eat, or drink, everything gets boring in the end." — Squid Game (Kdrama)
+
+"They say no blossom endures its bloom forever." — My Royal Nemesis (Kdrama)
 `.trim();
 
 // ═══════════════════════════════════════════════════════════
@@ -815,6 +894,7 @@ const TMDB_OVERRIDES = {
   'Still Shining':           { id: 276472 },  // Confirmed Korean ID
   'Karma':                   { id: 233686 },  // Confirmed Korean ID
   'The Frog':                { id: 219652 },  // Confirmed Korean ID
+  'My Royal Nemesis':        { id: 303143 },  // Confirmed Korean 2026 ID
 };
 
 async function fetchTMDB(drama) {
@@ -1010,17 +1090,25 @@ function renderCardGrid() {
 //  CARD SELECTION
 // ═══════════════════════════════════════════════════════════
 function selectCard(drama) {
-  // Block card selection if the panel is waiting for a Continue click
-  if (panelOpen) return;
+  const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(drama)}"]`);
 
-  // Block correctly cleared cards from being re-selected
-  if (clearedDramas.has(drama)) return;
+  // Hard block: panel is open waiting for Continue — shake the card as feedback
+  if (panelOpen) {
+    if (card) {
+      card.classList.remove('shake');
+      void card.offsetWidth; // force reflow so animation restarts
+      card.classList.add('shake');
+      card.addEventListener('animationend', () => card.classList.remove('shake'), { once: true });
+    }
+    return;
+  }
+
+  // Block all answered cards — both correct (✓) and wrong (✕) are permanently locked
+  if (clearedDramas.has(drama) || wrongDramas.has(drama)) return;
 
   selectedDrama = drama;
   document.querySelectorAll('.drama-card').forEach(c => c.classList.remove('selected'));
-  const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(drama)}"]`);
   if (card) {
-    card.classList.remove('wrong');
     card.classList.add('selected');
   }
 
@@ -1036,8 +1124,18 @@ function openChallengePanel(drama) {
   const panel = document.getElementById('challenge-panel');
   panel.classList.add('open');
 
-  // Collapse cinematic reveal
-  document.getElementById('cinematic-reveal').classList.remove('open');
+  // Scroll challenge panel into view on both mobile and desktop
+  // Small delay lets the panel finish rendering before measuring its position
+  setTimeout(() => {
+    const top = panel.getBoundingClientRect().top + window.pageYOffset - 16;
+    window.scrollTo({ top, behavior: 'smooth' });
+  }, 80);
+
+  // Collapse cinematic reveal and clear its content
+  const reveal = document.getElementById('cinematic-reveal');
+  reveal.classList.remove('open');
+  document.getElementById('cinematic-quote').textContent = '';
+  document.getElementById('cinematic-meta').textContent = '';
   document.getElementById('feedback-bar').textContent = '';
   document.getElementById('feedback-bar').className = 'feedback-bar';
   document.getElementById('continue-btn').classList.remove('visible');
@@ -1124,13 +1222,17 @@ function submitAnswer(chosen, correct, drama) {
     // Update HUD score
     document.getElementById('hud-score').textContent = totalScore;
 
-    // Apply ✓ badge to card immediately
+    // Apply ✓ badge to card immediately and permanently lock it
     const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(drama)}"]`);
     if (card) {
       const badge = card.querySelector('.card-result-badge');
       if (badge) badge.textContent = '✓';
       card.classList.remove('selected', 'wrong');
       card.classList.add('correct');
+      // Belt-and-braces: set pointer-events directly on the element so
+      // WordPress or theme CSS cannot override the .correct class rule
+      card.style.pointerEvents = 'none';
+      card.style.cursor = 'default';
     }
     clearedDramas.add(drama);
     wrongDramas.delete(drama);
@@ -1158,19 +1260,21 @@ function continueAfterAnswer() {
   const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(selectedDrama)}"]`);
 
   if (lastAnswerCorrect) {
-    // ✓ badge already on card from submitAnswer — ensure correct class is set
+    // ✓ — card already marked correct and locked in submitAnswer
     if (card) {
       card.classList.remove('selected', 'wrong');
       card.classList.add('correct');
     }
   } else {
-    // Wrong — show ✕ badge, card stays retryable
+    // ✕ — lock the card permanently, no retries
     wrongDramas.add(selectedDrama);
     if (card) {
       const badge = card.querySelector('.card-result-badge');
       if (badge) badge.textContent = '✕';
       card.classList.remove('selected');
       card.classList.add('wrong');
+      card.style.pointerEvents = 'none';
+      card.style.cursor = 'default';
     }
   }
 
