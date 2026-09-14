@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -97,6 +96,12 @@
     color: var(--accent-light);
     font-family: var(--font-serif);
   }
+  @keyframes bestPulse {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.28); color: var(--correct-border); }
+    100% { transform: scale(1); }
+  }
+  .hud-stat-value.pulse { animation: bestPulse 0.5s ease; }
 
   /* ─── STREAK BAR ─── */
   .streak-bar {
@@ -134,6 +139,15 @@
     padding: 16px 20px;
     margin-top: 16px;
   }
+  .how-to-play-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  .how-to-play.collapsed .how-to-play-header { margin-bottom: 0; }
   .how-to-play-title {
     font-family: var(--font-serif);
     font-size: 12px;
@@ -141,12 +155,26 @@
     color: var(--accent);
     letter-spacing: 2px;
     text-transform: uppercase;
-    margin-bottom: 10px;
   }
+  .how-to-play-chevron {
+    font-size: 9px;
+    color: var(--muted2);
+    flex-shrink: 0;
+    transition: transform 0.25s ease;
+  }
+  .how-to-play.collapsed .how-to-play-chevron { transform: rotate(180deg); }
   .how-to-play-steps {
     display: flex;
     gap: 10px;
     flex-wrap: wrap;
+    overflow: hidden;
+    max-height: 1000px;
+    opacity: 1;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
+  }
+  .how-to-play.collapsed .how-to-play-steps {
+    max-height: 0;
+    opacity: 0;
   }
   .htp-step {
     display: flex;
@@ -559,6 +587,15 @@
     color: var(--muted);
     margin-bottom: 32px;
   }
+  .completion-best-msg {
+    display: none;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    margin: -20px 0 24px;
+  }
+  .completion-best-msg.visible { display: block; }
 
 
   /* ─── LOADING OVERLAY ─── */
@@ -607,7 +644,7 @@
   .divider { height: 1px; background: var(--border2); margin: 24px 0; }
 
   @media (max-width: 600px) {
-    .hud-stats { gap: 14px; }
+    .hud-stats { gap: 10px; }
     .hud-stat-value { font-size: 13px; }
     .challenge-title { font-size: 15px; }
     .quotes-area { padding: 12px 16px; }
@@ -644,6 +681,10 @@
         <div class="hud-stat-value" id="hud-score">0</div>
       </div>
       <div class="hud-stat">
+        <div class="hud-stat-label">Best</div>
+        <div class="hud-stat-value" id="hud-best">0</div>
+      </div>
+      <div class="hud-stat">
         <div class="hud-stat-label">Round</div>
         <div class="hud-stat-value" id="hud-round">—</div>
       </div>
@@ -661,9 +702,12 @@
   </div>
 
   <!-- How to play -->
-  <div class="how-to-play">
-    <div class="how-to-play-title">How to Play</div>
-    <div class="how-to-play-steps">
+  <div class="how-to-play" id="how-to-play">
+    <div class="how-to-play-header" id="how-to-play-header">
+      <div class="how-to-play-title">How to Play</div>
+      <div class="how-to-play-chevron" id="htp-chevron">▲</div>
+    </div>
+    <div class="how-to-play-steps" id="how-to-play-steps">
       <div class="htp-step">
         <div class="htp-num">1</div>
         <div class="htp-text"><strong>Pick a card</strong> — choose any K-Drama poster from the grid</div>
@@ -731,6 +775,7 @@
   <div class="completion-screen" id="completion-screen">
     <div class="completion-korean">축하해요</div>
     <div class="completion-subtitle">You've completed all K-Dramas!</div>
+    <div class="completion-best-msg" id="completion-best-msg">New personal best!</div>
     <div class="eor-stats-row" style="margin-bottom:20px">
       <div class="eor-stat">
         <div class="eor-stat-value" id="comp-score"></div>
@@ -739,6 +784,10 @@
       <div class="eor-stat">
         <div class="eor-stat-value" id="comp-dramas"></div>
         <div class="eor-stat-label">Dramas Matched</div>
+      </div>
+      <div class="eor-stat">
+        <div class="eor-stat-value" id="comp-accuracy"></div>
+        <div class="eor-stat-label">Accuracy</div>
       </div>
     </div>
     <button class="play-again-btn" id="play-again-btn" style="margin-top:24px">Play Again</button>
@@ -831,6 +880,33 @@ And the last glass is for God who preordained everything." — When the Weather 
 "Do you know what someone with no money has in common with someone with too much money? Living is no fun for them. If you have too much money, no matter what you buy, eat, or drink, everything gets boring in the end." — Squid Game (Kdrama)
 
 "They say no blossom endures its bloom forever." — My Royal Nemesis (Kdrama)
+
+"Those driven by desperate desires often resort to unseemly choices." — Perfect Crown (Kdrama)
+
+"Dong-ha. You can't stray too far. It will only make it harder for you to come back to your family. Remember that." — A Model Family (Kdrama)
+
+"I wanted to set things right but I think I made another mistake." — A Shop for Killers (Kdrama)
+
+"Rumours can be really powerful. Once people get swept up by a rumour, they don't even care about the truth. That's why I don't like rumours." — Doctor on the Edge (Kdrama)
+
+"You meet a tiger in the woods if you try to fight it, you're going to die. And if you tried to run, you wouldn't get far. So what do you do? You climb on his back and hang on." — The Murky Stream (Kdrama)
+
+"I don't know the details, but look, the dumbest thing you can do is to force an end to something that isn't over yet." — See You at Work Tomorrow! (Kdrama)
+
+"Greatness isn't about making something amazing. Going all the way together, that's what makes it great." — Dream to You (Kdrama)
+
+"Any hope built on a lie is bound to fall apart." — The Husband (Kdrama)
+
+"Ongojisin - Gain new insights by learning from the past." — The Art of Negotiation (Kdrama)
+
+"Confession is the beginning of forgiveness and forgiveness opens the door to salvation." — The Scarecrow (Kdrama)
+
+"She completely understood that rich people risk their capital while poor people must risk their lives." — Little Women (Kdrama)
+
+"A heart with no destination to go always lets the feet know first." — Gold Land (Kdrama)
+
+"I told you. This is a waste of time. I've been here before.
+You only see what you know." — Mousetrap (Kdrama)
 `.trim();
 
 // ═══════════════════════════════════════════════════════════
@@ -895,6 +971,19 @@ const TMDB_OVERRIDES = {
   'Karma':                   { id: 233686 },  // Confirmed Korean ID
   'The Frog':                { id: 219652 },  // Confirmed Korean ID
   'My Royal Nemesis':        { id: 303143 },  // Confirmed Korean 2026 ID
+  'Perfect Crown':           { id: 278573 },  // Confirmed Korean ID
+  'A Model Family':          { id: 132171 },  // Confirmed Korean ID
+  'A Shop for Killers':      { id: 215072 },  // Confirmed Korean ID
+  'Doctor on the Edge':      { id: 287009 },  // Confirmed Korean ID
+  'The Murky Stream':        { id: 230926 },  // Confirmed Korean ID
+  'See You at Work Tomorrow!': { id: 289763 },  // Confirmed Korean ID
+  'Dream to You':            { id: 301412 },  // Confirmed Korean ID
+  'The Husband':             { id: 300954 },  // Text search could surface "The Second Husband" instead
+  'The Art of Negotiation':  { id: 255298 },  // Confirmed Korean ID
+  'The Scarecrow':           { id: 292121 },  // Text search could surface the 1964 British serial
+  'Little Women':            { id: 134675 },  // Text search returns the 2017/1978 Western versions first
+  'Gold Land':                { id: 278113 },  // Confirmed Korean ID
+  'Mousetrap':               { id: 290193 },  // Confirmed Korean ID
 };
 
 async function fetchTMDB(drama) {
@@ -977,6 +1066,36 @@ let roundMatched = 0;
 let totalMatched = 0;
 let streak = 0;
 let answeredCurrentCard = false;
+let bestScore = 0;              // persisted best score across sessions
+let newBestThisSession = false; // whether this playthrough beat the previous best
+let htpUserToggled = false;     // true once the player has manually opened/closed How to Play
+
+// ═══════════════════════════════════════════════════════════
+//  LOCAL STORAGE HELPERS
+// ═══════════════════════════════════════════════════════════
+const LS_BEST_SCORE = 'kdrama_best_score';
+const LS_HTP_COLLAPSED = 'kdrama_htp_collapsed';
+
+function getBestScore() {
+  try { return parseInt(localStorage.getItem(LS_BEST_SCORE), 10) || 0; } catch(e) { return 0; }
+}
+function saveBestScore(v) {
+  try { localStorage.setItem(LS_BEST_SCORE, String(v)); } catch(e) {}
+}
+function getSavedHtpCollapsed() {
+  try { return localStorage.getItem(LS_HTP_COLLAPSED); } catch(e) { return null; }
+}
+function saveHtpCollapsed(v) {
+  try { localStorage.setItem(LS_HTP_COLLAPSED, v ? '1' : '0'); } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HOW TO PLAY — collapse/expand
+// ═══════════════════════════════════════════════════════════
+function setHtpCollapsed(collapsed, opts = {}) {
+  document.getElementById('how-to-play').classList.toggle('collapsed', collapsed);
+  if (!opts.skipSave) saveHtpCollapsed(collapsed);
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -995,6 +1114,7 @@ function initSession() {
   currentRound = 0;
   totalScore = 0;
   totalMatched = 0;
+  newBestThisSession = false;
   document.getElementById('hud-score').textContent = '0';
   startNextRound();
 }
@@ -1012,6 +1132,13 @@ function startNextRound() {
   document.querySelectorAll('.drama-card').forEach(c => c.classList.add('cleared'));
 
   currentRound++;
+
+  // Auto-tuck the instructions away from Round 2 onward so they don't eat
+  // screen space every round — unless the player has already set their own preference.
+  if (currentRound === 2 && !htpUserToggled) {
+    setHtpCollapsed(true, { skipSave: true });
+  }
+
   roundScore = 0;
   roundMatched = 0;
   selectedDrama = null;
@@ -1222,6 +1349,18 @@ function submitAnswer(chosen, correct, drama) {
     // Update HUD score
     document.getElementById('hud-score').textContent = totalScore;
 
+    // New best score — persist it and give the HUD a small pulse
+    if (totalScore > bestScore) {
+      bestScore = totalScore;
+      newBestThisSession = true;
+      saveBestScore(bestScore);
+      const bestEl = document.getElementById('hud-best');
+      bestEl.textContent = bestScore;
+      bestEl.classList.remove('pulse');
+      void bestEl.offsetWidth; // restart animation
+      bestEl.classList.add('pulse');
+    }
+
     // Apply ✓ badge to card immediately and permanently lock it
     const card = document.querySelector(`.drama-card[data-drama="${CSS.escape(drama)}"]`);
     if (card) {
@@ -1364,6 +1503,9 @@ function showCompletionScreen() {
   cs.classList.add('open');
   document.getElementById('comp-score').textContent = totalScore;
   document.getElementById('comp-dramas').textContent = `${totalMatched} / ${UNIQUE_DRAMAS}`;
+  const accuracy = UNIQUE_DRAMAS > 0 ? Math.round((totalMatched / UNIQUE_DRAMAS) * 100) : 0;
+  document.getElementById('comp-accuracy').textContent = `${accuracy}%`;
+  document.getElementById('completion-best-msg').classList.toggle('visible', newBestThisSession);
   scrollToGame();
 }
 
@@ -1383,6 +1525,20 @@ async function boot() {
   // Wire button handlers via JS — avoids WordPress stripping inline onclick attributes
   document.getElementById('continue-btn').addEventListener('click', continueAfterAnswer);
   document.getElementById('play-again-btn').addEventListener('click', playAgain);
+  document.getElementById('how-to-play-header').addEventListener('click', () => {
+    htpUserToggled = true;
+    const collapsed = document.getElementById('how-to-play').classList.contains('collapsed');
+    setHtpCollapsed(!collapsed);
+  });
+
+  // Restore best score and any saved How-to-Play preference
+  bestScore = getBestScore();
+  document.getElementById('hud-best').textContent = bestScore;
+  const savedHtp = getSavedHtpCollapsed();
+  if (savedHtp !== null) {
+    htpUserToggled = true;
+    setHtpCollapsed(savedHtp === '1', { skipSave: true });
+  }
 
   document.getElementById('loading-overlay').classList.remove('hidden');
   document.querySelector('.loading-overlay .loading-sub').textContent = `Fetching posters for ${UNIQUE_DRAMAS} dramas...`;
