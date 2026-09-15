@@ -385,7 +385,7 @@
     background: #faf3e8;
     border-bottom: 1px solid var(--border2);
   }
-  .cinematic-reveal.open { max-height: 160px; }
+  .cinematic-reveal.open { max-height: 480px; }
   .cinematic-inner {
     padding: 20px 28px;
     text-align: center;
@@ -403,6 +403,20 @@
     letter-spacing: 2px;
     margin-top: 10px;
     font-family: var(--font-serif);
+  }
+  .cinematic-synopsis-wrap {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e3d6c0;
+  }
+  .cinematic-synopsis {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    line-height: 1.65;
+    color: #7a6f5f;
+    text-align: left;
+    max-width: 440px;
+    margin: 0 auto;
   }
 
   /* Challenge header */
@@ -479,6 +493,22 @@
   }
   .feedback-bar.correct { color: var(--correct-text); }
   .feedback-bar.wrong { color: var(--wrong-text); }
+
+  /* Quiet, non-celebratory synopsis note shown after a WRONG answer — deliberately
+     styled flatter than the gold cinematic-reveal so it doesn't read as a reward. */
+  .wrong-context {
+    display: none;
+    margin: 0 24px 16px;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+  .wrong-context.visible { display: block; }
+  .wrong-context b { color: var(--text); font-weight: 600; }
 
   /* Continue button */
   .continue-btn {
@@ -780,6 +810,9 @@
       <div class="cinematic-inner">
         <div class="cinematic-quote" id="cinematic-quote"></div>
         <div class="cinematic-meta" id="cinematic-meta"></div>
+        <div class="cinematic-synopsis-wrap" id="cinematic-synopsis-wrap">
+          <div class="cinematic-synopsis" id="cinematic-synopsis"></div>
+        </div>
       </div>
     </div>
     <div class="challenge-header">
@@ -791,6 +824,7 @@
     </div>
     <div class="quotes-area" id="quotes-area"></div>
     <div class="feedback-bar" id="feedback-bar"></div>
+    <div class="wrong-context" id="wrong-context"></div>
     <button class="continue-btn" id="continue-btn">Continue →</button>
   </div>
 
@@ -1041,7 +1075,7 @@ async function fetchTMDB(drama) {
       const res = await fetch(`${TMDB_BASE}/tv/${override.id}?api_key=${TMDB_KEY}&language=en-US`);
       const data = await res.json();
       if (data.poster_path) {
-        r = { poster_path: data.poster_path, first_air_date: data.first_air_date };
+        r = { poster_path: data.poster_path, first_air_date: data.first_air_date, overview: data.overview };
       }
     } else {
       // Normal title search
@@ -1055,15 +1089,27 @@ async function fetchTMDB(drama) {
     if (r) {
       posterCache[drama] = {
         posterUrl: r.poster_path ? `${TMDB_IMG}${r.poster_path}` : null,
-        year: r.first_air_date ? r.first_air_date.substring(0, 4) : ''
+        year: r.first_air_date ? r.first_air_date.substring(0, 4) : '',
+        synopsis: truncateSynopsis(r.overview)
       };
     } else {
-      posterCache[drama] = { posterUrl: null, year: '' };
+      posterCache[drama] = { posterUrl: null, year: '', synopsis: '' };
     }
   } catch(e) {
-    posterCache[drama] = { posterUrl: null, year: '' };
+    posterCache[drama] = { posterUrl: null, year: '', synopsis: '' };
   }
   return posterCache[drama];
+}
+
+// Trim TMDB overviews to a consistent length so the reveal panel never
+// balloons for the small number of unusually long synopses.
+function truncateSynopsis(text) {
+  if (!text) return '';
+  const clean = text.trim();
+  if (clean.length <= 170) return clean;
+  const cut = clean.slice(0, 170);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${cut.slice(0, lastSpace > 0 ? lastSpace : 170)}…`;
 }
 
 async function prefetchAllPosters() {
@@ -1349,8 +1395,11 @@ function openChallengePanel(drama) {
   reveal.classList.remove('open');
   document.getElementById('cinematic-quote').textContent = '';
   document.getElementById('cinematic-meta').textContent = '';
+  document.getElementById('cinematic-synopsis').textContent = '';
   document.getElementById('feedback-bar').textContent = '';
   document.getElementById('feedback-bar').className = 'feedback-bar';
+  document.getElementById('wrong-context').textContent = '';
+  document.getElementById('wrong-context').classList.remove('visible');
   document.getElementById('continue-btn').classList.remove('visible');
 
   // Header
@@ -1440,6 +1489,8 @@ function submitAnswer(chosen, correct, drama) {
     const data = posterCache[drama] || {};
     document.getElementById('cinematic-quote').textContent = `"${correct}"`;
     document.getElementById('cinematic-meta').textContent = `— ${drama}${data.year ? ', ' + data.year : ''}`;
+    document.getElementById('cinematic-synopsis').textContent = data.synopsis || '';
+    document.getElementById('cinematic-synopsis-wrap').style.display = data.synopsis ? '' : 'none';
     document.getElementById('cinematic-reveal').classList.add('open');
 
     // Update HUD score
@@ -1476,6 +1527,13 @@ function submitAnswer(chosen, correct, drama) {
     fb.textContent = `✗ Not quite — the correct answer is highlighted above.`;
     fb.className = 'feedback-bar wrong';
     announce(`Incorrect. The correct answer for ${drama} is highlighted above.`);
+
+    const wrongData = posterCache[drama] || {};
+    if (wrongData.synopsis) {
+      const wc = document.getElementById('wrong-context');
+      wc.innerHTML = `<b>${drama}:</b> ${wrongData.synopsis}`;
+      wc.classList.add('visible');
+    }
   }
 
   // Mark this drama as attempted (first time only)
