@@ -640,6 +640,47 @@
     40% { opacity: 1; transform: scale(1); }
   }
 
+  /* ─── ACCESSIBILITY ─── */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .drama-card:focus-visible,
+  .how-to-play-header:focus-visible,
+  .quote-btn:focus-visible,
+  .continue-btn:focus-visible,
+  .next-round-btn:focus-visible,
+  .play-again-btn:focus-visible {
+    outline: 2px solid var(--accent-light);
+    outline-offset: 2px;
+  }
+
+  /* ─── CONFETTI (fires once, completion screen only) ─── */
+  .confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 300;
+  }
+  .confetti-piece {
+    position: absolute;
+    top: -20px;
+    border-radius: 2px;
+    animation: confettiFall linear forwards;
+  }
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(540deg); opacity: 0.85; }
+  }
+
   /* ─── MISC ─── */
   .divider { height: 1px; background: var(--border2); margin: 24px 0; }
 
@@ -665,6 +706,9 @@
     <div class="loading-dot"></div>
   </div>
 </div>
+
+<div id="sr-announcer" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div class="confetti-container" id="confetti-container"></div>
 
 <div class="game-wrap">
 <div class="game-inner">
@@ -703,9 +747,9 @@
 
   <!-- How to play -->
   <div class="how-to-play" id="how-to-play">
-    <div class="how-to-play-header" id="how-to-play-header">
+    <div class="how-to-play-header" id="how-to-play-header" tabindex="0" role="button" aria-expanded="true" aria-controls="how-to-play-steps">
       <div class="how-to-play-title">How to Play</div>
-      <div class="how-to-play-chevron" id="htp-chevron">▲</div>
+      <div class="how-to-play-chevron" id="htp-chevron" aria-hidden="true">▲</div>
     </div>
     <div class="how-to-play-steps" id="how-to-play-steps">
       <div class="htp-step">
@@ -1094,7 +1138,39 @@ function saveHtpCollapsed(v) {
 // ═══════════════════════════════════════════════════════════
 function setHtpCollapsed(collapsed, opts = {}) {
   document.getElementById('how-to-play').classList.toggle('collapsed', collapsed);
+  document.getElementById('how-to-play-header').setAttribute('aria-expanded', String(!collapsed));
   if (!opts.skipSave) saveHtpCollapsed(collapsed);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SCREEN-READER ANNOUNCEMENTS
+// ═══════════════════════════════════════════════════════════
+function announce(msg) {
+  const el = document.getElementById('sr-announcer');
+  if (el) el.textContent = msg;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONFETTI (completion screen only)
+// ═══════════════════════════════════════════════════════════
+function fireConfetti() {
+  const container = document.getElementById('confetti-container');
+  if (!container) return;
+  container.innerHTML = '';
+  const colours = ['#c8973e', '#9b6c38', '#2e9e58', '#e8b4b8', '#f4e4c1'];
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const size = 6 + Math.random() * 6;
+    piece.style.width = `${size}px`;
+    piece.style.height = `${size * 0.4}px`;
+    piece.style.left = `${Math.random() * 100}vw`;
+    piece.style.background = colours[Math.floor(Math.random() * colours.length)];
+    piece.style.animationDuration = `${2.2 + Math.random() * 1.6}s`;
+    piece.style.animationDelay = `${Math.random() * 0.4}s`;
+    container.appendChild(piece);
+  }
+  setTimeout(() => { container.innerHTML = ''; }, 4200);
 }
 
 function shuffle(arr) {
@@ -1173,7 +1249,16 @@ function renderCardGrid() {
     const card = document.createElement('div');
     card.className = 'drama-card';
     card.dataset.drama = drama;
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', drama);
     card.onclick = () => selectCard(drama);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        selectCard(drama);
+      }
+    });
 
     const posterDiv = document.createElement('div');
     posterDiv.className = 'card-poster';
@@ -1205,6 +1290,7 @@ function renderCardGrid() {
     // Small corner badge — shown after answering (✓ green or ✕ red)
     const badge = document.createElement('div');
     badge.className = 'card-result-badge';
+    badge.setAttribute('aria-hidden', 'true');
 
     card.appendChild(posterDiv);
     card.appendChild(infoDiv);
@@ -1330,15 +1416,25 @@ function submitAnswer(chosen, correct, drama) {
   const fb = document.getElementById('feedback-bar');
 
   if (isCorrect) {
-    const pts = 100;
+    streak++;
+
+    // Small streak bonus layered on the flat base score — rewards the
+    // same streak thresholds the streak bar already celebrates.
+    let bonus = 0;
+    if (streak >= 3) bonus = 40;
+    else if (streak === 2) bonus = 20;
+    const pts = 100 + bonus;
+
     totalScore += pts;
     roundScore += pts;
     roundMatched++;
     totalMatched++;
-    streak++;
 
-    fb.textContent = `✓ Correct! +${pts} pts`;
+    fb.textContent = bonus > 0
+      ? `✓ Correct! +${pts} pts (includes +${bonus} streak bonus)`
+      : `✓ Correct! +${pts} pts`;
     fb.className = 'feedback-bar correct';
+    announce(`Correct. ${drama} matched.${bonus > 0 ? ` Plus ${bonus} streak bonus.` : ''} Score ${totalScore}.`);
 
     // Cinematic reveal
     const data = posterCache[drama] || {};
@@ -1379,6 +1475,7 @@ function submitAnswer(chosen, correct, drama) {
     streak = 0;
     fb.textContent = `✗ Not quite — the correct answer is highlighted above.`;
     fb.className = 'feedback-bar wrong';
+    announce(`Incorrect. The correct answer for ${drama} is highlighted above.`);
   }
 
   // Mark this drama as attempted (first time only)
@@ -1492,6 +1589,8 @@ function endRound() {
     nextBtn.onclick = startNextRound;
   }
 
+  announce(`Round ${currentRound} complete. ${roundMatched} of ${roundDramas.length} matched. ${roundScore} points this round. Total score ${totalScore}.`);
+
   scrollToGame();
 }
 
@@ -1506,6 +1605,10 @@ function showCompletionScreen() {
   const accuracy = UNIQUE_DRAMAS > 0 ? Math.round((totalMatched / UNIQUE_DRAMAS) * 100) : 0;
   document.getElementById('comp-accuracy').textContent = `${accuracy}%`;
   document.getElementById('completion-best-msg').classList.toggle('visible', newBestThisSession);
+
+  fireConfetti();
+  announce(`All dramas complete. Final score ${totalScore}. ${totalMatched} of ${UNIQUE_DRAMAS} matched, ${accuracy} percent accuracy.${newBestThisSession ? ' New personal best.' : ''}`);
+
   scrollToGame();
 }
 
@@ -1529,6 +1632,12 @@ async function boot() {
     htpUserToggled = true;
     const collapsed = document.getElementById('how-to-play').classList.contains('collapsed');
     setHtpCollapsed(!collapsed);
+  });
+  document.getElementById('how-to-play-header').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+      e.preventDefault();
+      document.getElementById('how-to-play-header').click();
+    }
   });
 
   // Restore best score and any saved How-to-Play preference
